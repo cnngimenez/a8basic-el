@@ -30,6 +30,14 @@
 
 ;;; Code:
 
+(defconst a8basic-label-regexp "^[[:alnum:]]+:[[:space:]]+$"
+  "Regexp for the labels.") ;; defconst
+
+(defconst a8basic-instructions-with-labels '("goto" "gosub" "trap")
+  "These are simple instructions that can have labels.
+For instance: \"GOTO somewhere\"
+The labels can be changed into line numbers later.") ;; defconst
+
 (defun a8basic-convert-to-lst ()
   "Convert from text into atari LST files."
   (interactive)
@@ -54,18 +62,18 @@
   (interactive)
   (save-excursion
     (goto-char (point-min))
-    (while (re-search-forward a8basic-line-number-regexp nil nil)
+    (while (re-search-forward a8basic-line-number-regexp nil t)
       (replace-match ""))) ) ;; defun
 
 (defun a8basic-insert-numbers (start increment)
   "Insert the line numbers.
 Use START as the initial line number and INCREMENT as the number increment."
-  (interactive)
+  (interactive "nStart?\nnIncrement?")
   (save-excursion
     (goto-char (point-min))
     (let ((num start))
       (while (< (line-number-at-pos) (line-number-at-pos (point-max)))
-	(insert num " ")
+	(insert (format "%s " num))
 	(forward-line)
 	(move-beginning-of-line nil)
 	(setq num (+ num increment))))) ) ;; defun
@@ -73,20 +81,44 @@ Use START as the initial line number and INCREMENT as the number increment."
 (defun a8basic-comment-label-line (line-num)
   "Go to the LINE-NUM position and comment it if it is possible."
   (save-excursion
-    (when (search-forward-regexp (concat "^" (number-to-string line-num) "[[:space:]]+") nil nil)
+    (when (search-forward-regexp (format "^%s[[:space:]]+" line-num) nil nil)
       ;; Line found
       (unless (string-match-p (concat "^" line-num "[[:space:]]+rem ")
 			      (buffer-substring (point-at-bol) (point-at-eol)))
 	;; It does not have the REM, add it!
-	(re-search-forward (concat "^" line-num "[[:space:]]+") nil nil)
+	(re-search-forward (concat "^" line-num "[[:space:]]+") nil t)
 	(replace-match (concat line-num " REM "))))) ) ;; defun
 
+(defun a8basic-search-label (label)
+  "Serach for the label LABEL string and return its position."
+  (save-excursion
+    (goto-char (point-min))
+    (if (re-search-forward (concat "^" label ":[[:space:]]+$") nil t)
+	(match-beginning 0)
+      nil)) ) ;; defun
 
-(defun a8basic-label-to-line-numbers (label)
+(defun a8basic-simple-inst-labels-to-line-number (name label line-num)
+  "Change the LABEL string with the LINE-NUM number for the given instruction.
+NAME is the instruction to search.  These instruction should have the format
+\"INSTRUCTION LABEL\", for instance: GOTO somewhere."
+  (save-excursion
+    (goto-char (point-min))
+    (while (re-search-forward (concat name "[[:space:]]+" label) nil t)
+      (replace-match (format "%s %s" name line-num)))) ) ;; defun
+
+(defun a8basic-instruction-labels-to-line-number (label line-num)
+  "Find all LABEL usage and replace it with the LINE-NUM number.
+The label usage are one of the GOTO, GOSUB, TRAP or simmilar Basic instructions."
+  (dolist (instname a8basic-instructions-with-labels)
+    (a8basic-simple-inst-labels-to-line-number instname label line-num))
+  ;; (a8basic-ongoto-inst-labels-to-line-number label line-num)
+  ) ;; defun
+
+(defun a8basic-label-to-line-number (label)
   "Search for LABEL and change it into its line number."
   (let ((line-num (a8basic-search-label label)))
     (a8basic-comment-label-line line-num)
-    (a8basic-intruction-labels-to-line-number label line-num)) ) ;; defun
+    (a8basic-instruction-labels-to-line-number label line-num)) ) ;; defun
 
 (defun a8basic-labels-to-line-numbers ()
   "Replace labels into REM label."
@@ -99,9 +131,12 @@ Use START as the initial line number and INCREMENT as the number increment."
 Use START as the starting number and INCREMENT as the line number increment.
 By deault START is 10 and increment is 10."
   (interactive)
-  (a8basic-erase-numbers)
-  (a8basic-insert-numbers start increment)
-  (a8basic-modify-labels) ) ;; defun
+  (let ((startnum (if start start 10))
+	(incrementnum (if increment increment 10)))
+    (a8basic-erase-numbers)
+    (a8basic-insert-numbers startnum incrementnum))
+  ;; (a8basic-labels-to-line-numbers)
+  ) ;; defun
 
 (provide 'a8basic)
 ;;; a8basic.el ends here
