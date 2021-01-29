@@ -125,7 +125,6 @@ The label usage are one of the GOTO, GOSUB, TRAP or simmilar Basic instructions.
   (while (search-forward-regexp a8basic-label-regexp nil t)
     (a8basic-label-to-line-number (match-string 1))) ) ;; defun
 
-
 (defun a8basic-renumber (&optional start increment)
   "Renumber the lines.
 Use START as the starting number and INCREMENT as the line number increment.
@@ -136,6 +135,14 @@ By deault START is 10 and increment is 10."
     (a8basic-erase-numbers)
     (a8basic-insert-numbers startnum incrementnum))
   ;; (a8basic-labels-to-line-numbers)
+  ) ;; defun
+
+(defun a8basic-beautify ()
+  "Make the Basic code a little better for reading and programming."
+  (when (search-forward "\233" nil t)
+    (a8basic-convert-to-txt))
+  (a8basic-erase-numbers)
+  ;; (a8basic-line-numbers-to-labels)
   ) ;; defun
 
 (provide 'a8basic)
