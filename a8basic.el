@@ -43,7 +43,7 @@ The labels can be changed into line numbers later.") ;; defconst
   (interactive)
   (save-excursion
     (goto-char (point-min))
-    (while (search-forward "\n" nil nil)
+    (while (search-forward "\n" nil t)
       (replace-match "\233"))) ) ;; defun
 
 (defun a8basic-convert-to-txt ()
@@ -51,7 +51,7 @@ The labels can be changed into line numbers later.") ;; defconst
   (interactive)
   (save-excursion
     (goto-char (point-min))
-    (while (search-forward "\233" nil nil)
+    (while (search-forward "\233" nil t)
       (replace-match "\n"))) ) ;; defun
 
 (defconst a8basic-line-number-regexp "^\\([[:digit:]]+\\)[[:space:]]+"
@@ -122,7 +122,7 @@ The label usage are one of the GOTO, GOSUB, TRAP or simmilar Basic instructions.
 
 (defun a8basic-labels-to-line-numbers ()
   "Replace labels into REM label."
-  (while (search-forward-regexp a8basic-label-regexp nil nil)
+  (while (search-forward-regexp a8basic-label-regexp nil t)
     (a8basic-label-to-line-number (match-string 1))) ) ;; defun
 
 
