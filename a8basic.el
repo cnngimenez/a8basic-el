@@ -1,10 +1,10 @@
-;;; a8basic.el --- Some helpful functions for programming with 8-bit computer's Basic.
+;;; a8basic.el --- Helpful functions for programming with 8-bit Basic
 
 ;; Copyright 2020 cnngimenez
 ;;
 ;; Author: cnngimenez
 ;; Version: 0.1.0
-;; Keywords: Basic, 8-bit computer
+;; Keywords: tools, convenience, Basic, 8-bit computer
 ;; URL: https://github.com/cnngimenez/a8basic-el
 ;; Package-Requires: ((emacs "24.5"))
 
@@ -34,19 +34,17 @@
   "Convert from text into atari LST files."
   (interactive)
   (save-excursion
-    (goto-char (point-min))    
-    (replace-string "\n" "\233")
-    )
-  ) ;; defun
+    (goto-char (point-min))
+    (while (search-forward "\n" nil nil)
+      (replace-match "\233"))) ) ;; defun
 
 (defun a8basic-convert-to-txt ()
   "Convert from atari LST into text files."
   (interactive)
   (save-excursion
     (goto-char (point-min))
-    (replace-string "\233" "\n")
-    )  
-  ) ;; defun
+    (while (search-forward "\233" nil nil)
+      (replace-match "\n"))) ) ;; defun
 
 (defconst a8basic-line-number-regexp "^\\([[:digit:]]+\\)[[:space:]]+"
   "The regular expression to match the line numbers of the code.") ;; defconst
@@ -56,7 +54,8 @@
   (interactive)
   (save-excursion
     (goto-char (point-min))
-    (replace-regexp a8basic-line-number-regexp ""))) ;; defun
+    (while (re-search-forward a8basic-line-number-regexp nil nil)
+      (replace-match ""))) ) ;; defun
 
 (defun a8basic-insert-numbers (start increment)
   "Insert the line numbers.
@@ -79,8 +78,8 @@ Use START as the initial line number and INCREMENT as the number increment."
       (unless (string-match-p (concat "^" line-num "[[:space:]]+rem ")
 			      (buffer-substring (point-at-bol) (point-at-eol)))
 	;; It does not have the REM, add it!
-	(replace-string (concat "^" line-num "[[:space:]]+")
-			(concat line-num " REM "))))) ) ;; defun
+	(re-search-forward (concat "^" line-num "[[:space:]]+") nil nil)
+	(replace-match (concat line-num " REM "))))) ) ;; defun
 
 
 (defun a8basic-label-to-line-numbers (label)
