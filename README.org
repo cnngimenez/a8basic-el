@@ -1,0 +1,26 @@
+a8basic.el provides interactive (and non-interactive) functions useful for Basic code. Specially, for 8-bit computer's code.
+
+The following features are available (not crossed are work-in-progress items):
+
+- Emulation support
+  - [X] Transform text files into LST (understandable by Altirra Basic and atari800 emulators).
+- Line numbers
+  - [X] Erase the line numbers.
+  - [X] Insert line numbers.
+  - [ ] Renumber line numbers.
+- Labelling line numbers
+  - [ ] Convert labels into line numbers (including in instructions like GOTO, GOSUB, TRAP, etc.).
+  - [ ] Convert line numbers into labels (the inverse operation).
+  - [ ] Convert line numbers into labels creating them automatically.
+- Lower-case or upper-case instructions
+  - [ ] Make lower-case instructions into upper-case before saving.
+- Non-alphanumeric ASCII characters and their Unicode representations
+  - [ ] Convert non alphanumeric ASCII characters into simmilar Unicode representations (is this even possible!? :thinking_face:)
+  - [ ] Convert these Unicode representation into its ASCII characters back.
+
+
+* License
+[[https://www.gnu.org/graphics/gplv3-with-text-136x68.png]]
+
+This work is under the GNU General Public License version 3. See https://www.gnu.org/licenses/gpl-3.0.html for more information.
+
