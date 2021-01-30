@@ -96,6 +96,7 @@ By deault START is 10 and increment is 10."
 
 (defun a8basic-beautify ()
   "Make the Basic code a little better for reading and programming."
+  (interactive)
   (when (search-forward "\233" nil t)
     (a8basic-convert-to-txt))
   (a8basic-erase-numbers)
@@ -104,13 +105,14 @@ By deault START is 10 and increment is 10."
 
 (defun a8basic-uglify ()
   "Make the Basic code ready for the emulator."
+  (interactive)
   (a8basic-erase-empty-lines)
   (a8basic-renumber 10 10)
-  (a8basic-comment-all-labels)
   (let ((labels-alist (a8basic-search-labels-with-linenum)))
     (a8basic-inst-with-label-to-line-number "goto" labels-alist)
     (a8basic-inst-with-label-to-line-number "gosub" labels-alist)
-    (a8basic-inst-with-label-to-line-number "trap" labels-alist)) ) ;; defun
+    (a8basic-inst-with-label-to-line-number "trap" labels-alist))
+  (a8basic-comment-all-labels)) ;; defun
 
 
 (defun a8basic-erase-empty-lines ()
