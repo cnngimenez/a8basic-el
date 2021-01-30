@@ -30,6 +30,8 @@
 
 ;;; Code:
 
+(require 'cl-extra)
+
 (defconst a8basic-label-regexp "[[:alnum:]_-]+"
   "The label regexp.") ;; defconst
 
@@ -111,7 +113,8 @@ By deault START is 10 and increment is 10."
   (let ((labels-alist (a8basic-search-labels-with-linenum)))
     (a8basic-inst-with-label-to-line-number "goto" labels-alist)
     (a8basic-inst-with-label-to-line-number "gosub" labels-alist)
-    (a8basic-inst-with-label-to-line-number "trap" labels-alist))
+    (a8basic-inst-with-label-to-line-number "trap" labels-alist)
+    (a8basic-all-ongoto-label-to-line-number labels-alist))
   (a8basic-comment-all-labels)) ;; defun
 
 
@@ -159,6 +162,20 @@ Return an alist with each label defined an the Basic line number."
 			  results)))
       (reverse results)) ) ;; defun
 
+(defun a8basic-convert-label-to-line-num (labels-to-map label-alist)
+  "Convert all labels in LABELS-TO-MAP into (Basic) line num.
+Use the LABEL-ALIST association (a label string and number cons list) to map
+them.
+If LABELS-TO-MAP contains numbers (or string matching a number), then leave it.
+If LABELS-TO-MAP contains label that are not in LABEL-ALIST, return nil for it.
+Return a list of numbers."
+  (cl-map 'list (lambda (label)
+		  (if (string-match-p "[[:digit:]]+" label)
+		      ;; It is not a label, leave it.
+		      (string-to-number label)
+		    ;; It is a label, change it.
+		    (alist-get label label-alist nil nil 'string=)))
+	   labels-to-map) ) ;; defun
 
 (defun a8basic-comment-all-labels ()
   "Search for all labels and comment them.  No line number should be inserted."
@@ -192,6 +209,44 @@ NAME is the instruction to search.  These instruction should have the format
 		(replace-match (format "%s %s" name line-num))
 	      (error (format "Label \"%s\" is founded but no line number is associated to it."
 			     (match-string-no-properties 1))))))))) ) ;; defun
+
+(defun a8basic-str-label-list-to-line-num (label-list-as-str label-alist)
+  "Return a string formatted as a comma separated list of line numbers.
+LABEL-LIST-AS-STR is a string with a comma separated label list.
+LABEL-ALIST is an association list between label string and (Basic) line
+numbers.
+It decode the string, maps each label into line numbers and rebuild the string."
+  (combine-and-quote-strings
+   (cl-map 'list 'number-to-string
+	    (a8basic-convert-label-to-line-num (split-string label-list-as-str "," nil "[[:space:]]+")
+					       label-alist))
+   ",") ) ;; defun
+
+
+(defun a8basic-ongoto-label-to-line-number (label-alist)
+  "Convert all labels into Basic line numbers in the current line.
+The current line must have an ON GOTO statement.
+LABEL-ALIST is a ilst of label strings with ther Basic line number."
+  (save-excursion
+    (goto-char (point-at-bol))
+    (when (re-search-forward
+	   "\\(on[[:space:]]+[^[:space:]]+[[:space:]]+goto \\)\\([[:alnum:]_-\\,[:space:]]+\\)" (point-at-eol) t)
+      (let ((str (match-string-no-properties 2)))
+	(delete-region (match-beginning 2) (match-end 2))
+	(goto-char (match-end 1))
+	(insert (a8basic-str-label-list-to-line-num str label-alist)))
+      ;; return t
+      t)) ) ;; defun
+
+
+(defun a8basic-all-ongoto-label-to-line-number (label-alist)
+  "Convert the labels into Basic line numbers on all ON GOTO instructions.
+LABEL-ALIST is an alist of label string associated with their Basic line number."
+  (save-excursion
+    (while (re-search-forward "ON[[:space:]]+[^[:space:]]+[[:space:]]+GOTO" nil t)
+      (goto-char (match-beginning 0))
+      (a8basic-ongoto-label-to-line-number label-alist)
+      (forward-line 1))) ) ;; defun
 
 
 (provide 'a8basic)
