@@ -6,7 +6,7 @@
 ;; Version: 0.1.0
 ;; Keywords: tools, convenience, Basic, 8-bit computer
 ;; URL: https://github.com/cnngimenez/a8basic-el
-;; Package-Requires: ((emacs "24.5"))
+;; Package-Requires: ((emacs "25.1"))
 
 ;; This program is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -30,8 +30,12 @@
 
 ;;; Code:
 
-(defconst a8basic-label-regexp "^[[:alnum:]]+:[[:space:]]+$"
-  "Regexp for the labels.") ;; defconst
+(defconst a8basic-label-regexp "[[:alnum:]_-]+"
+  "The label regexp.") ;; defconst
+
+(defconst a8basic-line-label-regexp (format "^[[:digit:]]*[[:space:]]*\\(%s\\):[[:space:]]*$"
+				     a8basic-label-regexp)
+  "Regexp for the label definitions (the in-line definition).") ;; defconst
 
 (defconst a8basic-instructions-with-labels '("goto" "gosub" "trap")
   "These are simple instructions that can have labels.
@@ -78,34 +82,6 @@ Use START as the initial line number and INCREMENT as the number increment."
 	(move-beginning-of-line nil)
 	(setq num (+ num increment))))) ) ;; defun
 
-(defun a8basic-comment-label-line (line-num)
-  "Go to the LINE-NUM position and comment it if it is possible."
-  (save-excursion
-    (when (search-forward-regexp (format "^%s[[:space:]]+" line-num) nil nil)
-      ;; Line found
-      (unless (string-match-p (concat "^" line-num "[[:space:]]+rem ")
-			      (buffer-substring (point-at-bol) (point-at-eol)))
-	;; It does not have the REM, add it!
-	(re-search-forward (concat "^" line-num "[[:space:]]+") nil t)
-	(replace-match (concat line-num " REM "))))) ) ;; defun
-
-(defun a8basic-search-label (label)
-  "Serach for the label LABEL string and return its position."
-  (save-excursion
-    (goto-char (point-min))
-    (if (re-search-forward (concat "^" label ":[[:space:]]+$") nil t)
-	(match-beginning 0)
-      nil)) ) ;; defun
-
-(defun a8basic-simple-inst-labels-to-line-number (name label line-num)
-  "Change the LABEL string with the LINE-NUM number for the given instruction.
-NAME is the instruction to search.  These instruction should have the format
-\"INSTRUCTION LABEL\", for instance: GOTO somewhere."
-  (save-excursion
-    (goto-char (point-min))
-    (while (re-search-forward (concat name "[[:space:]]+" label) nil t)
-      (replace-match (format "%s %s" name line-num)))) ) ;; defun
-
 (defun a8basic-instruction-labels-to-line-number (label line-num)
   "Find all LABEL usage and replace it with the LINE-NUM number.
 The label usage are one of the GOTO, GOSUB, TRAP or simmilar Basic instructions."
@@ -122,7 +98,7 @@ The label usage are one of the GOTO, GOSUB, TRAP or simmilar Basic instructions.
 
 (defun a8basic-labels-to-line-numbers ()
   "Replace labels into REM label."
-  (while (search-forward-regexp a8basic-label-regexp nil t)
+  (while (search-forward-regexp a8basic-line-label-regexp nil t)
     (a8basic-label-to-line-number (match-string 1))) ) ;; defun
 
 (defun a8basic-renumber (&optional start increment)
@@ -144,6 +120,94 @@ By deault START is 10 and increment is 10."
   (a8basic-erase-numbers)
   ;; (a8basic-line-numbers-to-labels)
   ) ;; defun
+
+(defun a8basic-uglify ()
+  "Make the Basic code ready for the emulator."
+  (a8basic-erase-empty-lines)
+  (a8basic-renumber 10 10)
+  (a8basic-comment-all-labels)
+  (let ((labels-alist (a8basic-search-labels-with-linenum)))
+    (a8basic-inst-with-label-to-line-number "goto" labels-alist)
+    (a8basic-inst-with-label-to-line-number "gosub" labels-alist)
+    (a8basic-inst-with-label-to-line-number "trap" labels-alist)) ) ;; defun
+
+
+(defun a8basic-erase-empty-lines ()
+  "Erase empty lines in the current buffer."
+  (flush-lines "^[[:space:]]*$") ) ;; defun
+
+;; --------------------
+;; Label processing
+;; --------------------
+
+(defun a8basic-basic-line-num (&optional buffer-line-num)
+  "Retrieve the Basic line number if exists, nil otherwise.
+BUFFER-LINE-NUM is the buffer line number.  If not present, use the current line."
+  (save-excursion
+    (when buffer-line-num
+      (forward-line (- buffer-line-num (line-number-at-pos))))
+    
+    (goto-char (point-at-bol))
+    (if (re-search-forward "^\\([[:digit:]]+\\) " nil t)
+	;; there is a number
+	(string-to-number (match-string 1))
+      nil)) ) ;; defun
+
+
+(defun a8basic-search-labels ()
+  "Search for labels in the current buffer.
+Return an alist with each label defined and the buffer's line number."
+  (let ((result nil))
+    (save-excursion
+      (goto-char (point-min))
+      (while (re-search-forward a8basic-line-label-regexp nil t)
+	(setq result (push (cons (match-string-no-properties 1) (line-number-at-pos (match-beginning 1)))
+			   result))
+	(goto-char (match-end 0))))
+    (reverse result))) ;; defun
+
+(defun a8basic-search-labels-with-linenum ()
+  "Search for labels in the current buffer.
+Return an alist with each label defined an the Basic line number."
+  (let ((results nil))
+    (dolist (label-cons (a8basic-search-labels))
+      (setq results (push (cons (car label-cons)
+				(a8basic-basic-line-num (cdr label-cons)))
+			  results)))
+      (reverse results)) ) ;; defun
+
+
+(defun a8basic-comment-all-labels ()
+  "Search for all labels and comment them.  No line number should be inserted."
+  (save-excursion
+    (goto-char (point-min))
+    (dolist (label-cons (a8basic-search-labels))
+      ;; place the cursor at the line
+      (forward-line (- (cdr label-cons) (line-number-at-pos)))
+      (goto-char (point-at-bol))
+      ;; place the cursor just before the label
+      (search-forward (car label-cons))
+      (goto-char (match-beginning 0))
+      
+      (insert "REM "))) ) ;; defun
+
+(defun a8basic-inst-with-label-to-line-number (name label-alist)
+  "Convert the label used as parameter in an instruction into line number.
+LABEL-ALIST is an alist of label string and the line-number.
+NAME is the instruction to search.  These instruction should have the format
+\"INSTRUCTION LABEL\", for instance: GOTO somewhere."
+  (save-excursion
+    (goto-char (point-min))
+    (while (re-search-forward (format "%s[[:space:]]+\\(%s\\)"
+				      name a8basic-label-regexp) nil t)
+      ;; Found one instruction, replace the label
+      (let ((line-num (alist-get (match-string-no-properties 1) label-alist
+				 nil nil 'string=)))
+	(if line-num
+	    (replace-match (format "%s %s" name line-num))
+	  (error (format "Label \"%s\" is founded but no line number is associated to it."
+			 (match-string-no-properties 1)))))))) ;; defun
+
 
 (provide 'a8basic)
 ;;; a8basic.el ends here
