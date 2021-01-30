@@ -117,7 +117,7 @@ By deault START is 10 and increment is 10."
 
 (defun a8basic-erase-empty-lines ()
   "Erase empty lines in the current buffer."
-  (flush-lines "^[[:space:]]*$") ) ;; defun
+  (flush-lines "^[[:space:]]*$" (point-min) (point-max)) ) ;; defun
 
 ;; --------------------
 ;; Label processing
