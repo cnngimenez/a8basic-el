@@ -183,13 +183,15 @@ NAME is the instruction to search.  These instruction should have the format
     (goto-char (point-min))
     (while (re-search-forward (format "%s[[:space:]]+\\(%s\\)"
 				      name a8basic-label-regexp) nil t)
-      ;; Found one instruction, replace the label
-      (let ((line-num (alist-get (match-string-no-properties 1) label-alist
-				 nil nil 'string=)))
-	(if line-num
-	    (replace-match (format "%s %s" name line-num))
-	  (error (format "Label \"%s\" is founded but no line number is associated to it."
-			 (match-string-no-properties 1)))))))) ;; defun
+      ;; Found one instruction, is it a label?
+      (let ((label (match-string-no-properties 1)))
+	(unless (string-match-p "[[:digit:]]+" label)
+	  ;; It is a label, replace it
+	  (let ((line-num (alist-get label label-alist nil nil 'string=)))
+	    (if line-num
+		(replace-match (format "%s %s" name line-num))
+	      (error (format "Label \"%s\" is founded but no line number is associated to it."
+			     (match-string-no-properties 1))))))))) ) ;; defun
 
 
 (provide 'a8basic)
