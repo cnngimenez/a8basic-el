@@ -32,6 +32,24 @@
 
 (require 'cl-extra)
 
+(defconst a8basic-charset-map 
+  ;; Use "Symbols for legacy computing" unicode blocks. 
+  '((#x00 #x1f
+	  "🖤" "┣" "▕" "🬷" "┨" "🬨" "🮣" "🮢" "🭊" "🬞" "🬿" "🬁" "🬀" "🬂" "🬭" "🬏"
+	  ;; Use "Block elements" and "Box drawing" unicode blocks.
+	  "♣" "🬕 " "━" "╋" "●" "▄" "▏" "┳" "┻" "▌" "🬲" "␛" "🠱" "🠳" "🠰" "🠲")
+    ;; 0x20 to 0x5f are the usual ASCII
+    (#x60 #x60 "♦")
+    ;; 0x61 to 0x7a are the usual ASCII
+    (#x7b #x7f "♠" "|" "🢰" "⯇" "⯈")
+    ;; 0x80 to 0xff are the same characters as before with black background
+    ;; except for the following:
+    (#x9b #x9b"⏎") ;; EOL symbol
+    ;; (#xb0 #b9 "❶")  ;; Black digits
+    ;; (#xc1 #xda "🅰"))  ;; Black capital letters
+    )
+  "Alist that associate the ASCII code of the Altirra Basic to UTF-8 codes.") ;; defconst
+
 (defconst a8basic-label-regexp "[[:alnum:]_-]+"
   "The label regexp.") ;; defconst
 
@@ -46,6 +64,16 @@ The labels can be changed into line numbers later.") ;; defconst
 
 (defconst a8basic-line-number-regexp "^\\([[:digit:]]+\\)[[:space:]]+"
   "The regular expression to match the line numbers of the code.") ;; defconst
+
+(defface a8basic-char-black-face
+  '((t :foreground "black" :background "grey" :height 2.0))
+  "Face for Basic ASCII characters representation with black background"
+  :group 'a8basic)
+
+(defface a8basic-char-normal
+  '((t :foreground "grey" :background "black" :height 2.0))
+  "Face for Basic ASCII characters representation with black background"
+  :group 'a8basic)
 
 (defun a8basic-convert-to-lst ()
   "Convert from text into atari LST files."
@@ -247,6 +275,61 @@ LABEL-ALIST is an alist of label string associated with their Basic line number.
       (goto-char (match-beginning 0))
       (a8basic-ongoto-label-to-line-number label-alist)
       (forward-line 1))) ) ;; defun
+
+;; ----------------------
+;; Charset
+;; ----------------------
+
+(defun a8basic-char-group (char)
+  "Find the group in `a8basic-charset-map' where the CHAR is."
+  (seq-find (lambda (elt)
+	      (and (<= (car elt) char)
+		   (<= char (cadr elt))))
+	    a8basic-charset-map) ) ;; defun
+
+(defun a8basic-char-escape-char (char)
+  "Return the representation of the Basic ASCII character CHAR.
+CHAR is an escaped character (not a typical symbol or alphanumeric character)."
+  (let ((group (a8basic-char-group char)))
+    (when group
+      (nth (+ 2 (- char (car group))) group))) ) ;; defun
+
+(defun a8basic-char-black-background (char)
+  "Return the representation of the Basic ASCII character CHAR.
+Consider that the given character has black background."
+  (propertize (a8basic-char-a8ascii-to-utf (- char #x80))
+	      'face 'a8basic-char-black-face)) ;; defun
+
+(defun a8basic-char-a8ascii-to-utf (char)
+  "Convert the old ASCII character to unicode representation string."
+  (cond
+   ((or (and (<= #x20 char) (<= char #x5f))
+	(and (<= #x61 char) (<= char #x7a)))
+    (propertize (char-to-string char)
+		'face 'a8basic-char-normal))
+   ((and (<= #x80 char)
+	 (<= char #xff)
+	 (/= #x9b char))
+    ;; Black background character
+    (a8basic-char-black-background char))
+   (t
+    (propertize (a8basic-char-escape-char char)
+		'face 'a8basic-char-normal))) ) ;; defun
+
+(defun a8basic-str-a8ascii-to-utf (str)
+  "Convert a string from the old ASCII to its unicode representation."
+  
+  ) ;; defun
+
+(defun a8basic-show-ascii-table ()
+  "Show a new buffer with the ascii representation."
+  (interactive)
+  (with-current-buffer (get-buffer-create "*ASCII table*")
+    (delete-region (point-min) (point-max))
+    (switch-to-buffer-other-window (current-buffer))
+    (insert "Dec Oct Hex Char \n")
+    (dotimes (i 256)
+      (insert (format "%3d %3o %3X %s \n" i i i (a8basic-char-a8ascii-to-utf i))))) ) ;; defun
 
 
 (provide 'a8basic)
