@@ -42,6 +42,9 @@
 For instance: \"GOTO somewhere\"
 The labels can be changed into line numbers later.") ;; defconst
 
+(defconst a8basic-line-number-regexp "^\\([[:digit:]]+\\)[[:space:]]+"
+  "The regular expression to match the line numbers of the code.") ;; defconst
+
 (defun a8basic-convert-to-lst ()
   "Convert from text into atari LST files."
   (interactive)
@@ -57,9 +60,6 @@ The labels can be changed into line numbers later.") ;; defconst
     (goto-char (point-min))
     (while (search-forward "\233" nil t)
       (replace-match "\n"))) ) ;; defun
-
-(defconst a8basic-line-number-regexp "^\\([[:digit:]]+\\)[[:space:]]+"
-  "The regular expression to match the line numbers of the code.") ;; defconst
 
 (defun a8basic-erase-numbers ()
   "Erase the lines numbers."
@@ -81,25 +81,6 @@ Use START as the initial line number and INCREMENT as the number increment."
 	(forward-line)
 	(move-beginning-of-line nil)
 	(setq num (+ num increment))))) ) ;; defun
-
-(defun a8basic-instruction-labels-to-line-number (label line-num)
-  "Find all LABEL usage and replace it with the LINE-NUM number.
-The label usage are one of the GOTO, GOSUB, TRAP or simmilar Basic instructions."
-  (dolist (instname a8basic-instructions-with-labels)
-    (a8basic-simple-inst-labels-to-line-number instname label line-num))
-  ;; (a8basic-ongoto-inst-labels-to-line-number label line-num)
-  ) ;; defun
-
-(defun a8basic-label-to-line-number (label)
-  "Search for LABEL and change it into its line number."
-  (let ((line-num (a8basic-search-label label)))
-    (a8basic-comment-label-line line-num)
-    (a8basic-instruction-labels-to-line-number label line-num)) ) ;; defun
-
-(defun a8basic-labels-to-line-numbers ()
-  "Replace labels into REM label."
-  (while (search-forward-regexp a8basic-line-label-regexp nil t)
-    (a8basic-label-to-line-number (match-string 1))) ) ;; defun
 
 (defun a8basic-renumber (&optional start increment)
   "Renumber the lines.
